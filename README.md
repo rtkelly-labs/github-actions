@@ -228,3 +228,8 @@ BDD covers pure presentation and frozen real-PR CSV cases. Hypothesis checks
 monotonicity, order invariance, weighting, Unicode counts and combined dimensions;
 unit tests cover stale judgments, output delimiters and sticky session ownership.
 `pytest<9` is intentional for the current pytest-bdd fixture API compatibility.
+
+The repository's PR smoke job runs proposed action code with read-only credentials.
+The same workflow's manual `workflow_dispatch` mode tests sticky publication only
+from trusted `main`, pinned to the dispatch commit, with a separate write-enabled
+job. Proposed PR code is never used by the write-enabled publication job.

@@ -41,9 +41,13 @@ def repositories(client: GitHub, owners: list[str]) -> list[str]:
             repos.add(string(row["full_name"]))
     for owner in owners:
         # Organization enumeration also includes accessible public repositories not in /user/repos.
-        if owner.lower() != "rtkelly13":
-            for row in client.pages(f"/orgs/{owner}/repos"):
-                repos.add(string(row["full_name"]))
+        account = mapping(client.request("GET", f"/users/{owner}"))
+        kind = string(account.get("type"))
+        if kind not in {"User", "Organization"}:
+            raise Invalid(f"Unsupported owner account type for {owner}")
+        route = f"/orgs/{owner}/repos" if kind == "Organization" else f"/users/{owner}/repos"
+        for row in client.pages(route):
+            repos.add(string(row["full_name"]))
     return sorted(repos, key=str.lower)
 
 
