@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import html
+import re
 from dataclasses import dataclass
 
 from estate_actions.assessment import Judgment, Metrics
@@ -103,6 +104,8 @@ def session_body(session: str, markdown: str) -> str:
 
 
 def publish(github: GitHub, number: int, body: str, author: str) -> int:
+    if not re.match(r"\A<!-- estate-actions:session:[0-9a-f]{64} -->\n", body):
+        raise Invalid("A valid sticky session marker is required before publication")
     marker = body.split("\n", 1)[0] + "\n"
     matches = [
         comment

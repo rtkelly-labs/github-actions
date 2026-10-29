@@ -161,3 +161,15 @@ def test_ambiguous_or_nonfinite_json_is_rejected(value):
 
     with pytest.raises(Invalid):
         decode(value)
+
+
+@pytest.mark.parametrize(
+    "body", ["## PR scope assessment\nHello", "", "<!-- estate-actions:session:bad -->\n"]
+)
+def test_publisher_rejects_unmarked_reports_before_reading_comments(monkeypatch, body):
+    from estate_actions.github import GitHub
+    from estate_actions.report import publish
+
+    monkeypatch.setattr(GitHub, "pages", lambda *args: pytest.fail("Unmarked report reached comment lookup"))
+    with pytest.raises(Invalid, match="valid sticky session marker"):
+        publish(GitHub("secret", "a/b"), 1, body, "github-actions[bot]")
