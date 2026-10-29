@@ -1,0 +1,43 @@
+name: PR assessment evidence
+description: Prepare a fingerprinted evidence packet for your own agent; no model invocation
+inputs:
+  token:
+    description: GitHub token with pull-requests read access
+    default: ${{ github.token }}
+  repository:
+    description: Target owner/repository
+    default: ${{ github.repository }}
+  pr-number:
+    description: Target pull request number
+    default: ${{ github.event.pull_request.number }}
+  policy-file:
+    description: Trusted JSON sizing policy path
+    default: ''
+outputs:
+  context-file:
+    description: JSON evidence packet for your agent
+    value: ${{ steps.prepare.outputs.context-file }}
+  evidence-key:
+    description: Exact evidence fingerprint the agent must return
+    value: ${{ steps.prepare.outputs.evidence-key }}
+  error-code:
+    description: 0 evidence collected; nonzero collection incomplete
+    value: ${{ steps.prepare.outputs.error-code }}
+runs:
+  using: composite
+  steps:
+    - id: prepare
+      shell: python
+      env:
+        ACTION_ROOT: ${{ github.action_path }}/..
+        GH_TOKEN: ${{ inputs.token }}
+        REPOSITORY: ${{ inputs.repository }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        POLICY_FILE: ${{ inputs.policy-file }}
+        POST_COMMENT: 'false'
+      run: |
+        import os
+        import sys
+        sys.path.insert(0, os.path.join(os.environ['ACTION_ROOT'], 'src'))
+        from estate_actions.cli import run
+        sys.exit(run('prepare'))

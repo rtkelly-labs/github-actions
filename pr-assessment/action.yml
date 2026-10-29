@@ -1,0 +1,50 @@
+name: PR scope assessment
+description: Deterministic file-type sizing and validation of a Bring Your Own Agent judgment
+inputs:
+  context-file:
+    description: Frozen evidence packet from pr-context; presentation makes no network calls
+    required: true
+  assessment-file:
+    description: Trusted agent JSON judgment; omitted means NEEDS_REVIEW
+    default: ''
+  session:
+    description: Stable sticky comment session identifier
+    default: pr-scope-assessment
+outputs:
+  markdown:
+    description: Complete sticky report Markdown
+    value: ${{ steps.assess.outputs.markdown }}
+  markdown-file:
+    description: Local Markdown report path
+    value: ${{ steps.assess.outputs.markdown-file }}
+  error-code:
+    description: 0 keep; 1 split; 2 incomplete; 3 publication failed. Advisory only.
+    value: ${{ steps.assess.outputs.error-code }}
+  size:
+    description: XS, S, M, L, XL, XXL; a lower bound when character coverage is partial
+    value: ${{ steps.assess.outputs.size }}
+  decision:
+    description: Validated agent decision or NEEDS_REVIEW
+    value: ${{ steps.assess.outputs.decision }}
+  evidence-key:
+    description: SHA256 of the exact evidence and policy
+    value: ${{ steps.assess.outputs.evidence-key }}
+  context-file:
+    description: Local JSON evidence packet path
+    value: ${{ steps.assess.outputs.context-file }}
+runs:
+  using: composite
+  steps:
+    - id: assess
+      shell: python
+      env:
+        ACTION_ROOT: ${{ github.action_path }}/..
+        CONTEXT_FILE: ${{ inputs.context-file }}
+        ASSESSMENT_FILE: ${{ inputs.assessment-file }}
+        SESSION: ${{ inputs.session }}
+      run: |
+        import os
+        import sys
+        sys.path.insert(0, os.path.join(os.environ['ACTION_ROOT'], 'src'))
+        from estate_actions.cli import run
+        sys.exit(run('assess'))

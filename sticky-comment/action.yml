@@ -1,0 +1,56 @@
+name: Sticky report session
+description: Publish Markdown in one author-scoped sticky comment and expose an advisory error code
+inputs:
+  token:
+    description: GitHub token with pull-requests write access
+    default: ${{ github.token }}
+  repository:
+    description: Target owner/repository
+    default: ${{ github.repository }}
+  pr-number:
+    description: Target pull request number
+    default: ${{ github.event.pull_request.number }}
+  markdown-file:
+    description: UTF-8 Markdown report path
+    required: true
+  error-code:
+    description: Integer assessment result; exposed without failing the step
+    default: '0'
+  context-file:
+    description: Optional PR evidence packet; reject publication if evidence changed
+    default: ''
+  session:
+    description: Stable identifier; different sessions own different comments
+    required: true
+  comment-author:
+    description: Expected login of the token author
+    default: github-actions[bot]
+outputs:
+  markdown:
+    description: Complete sticky comment Markdown
+    value: ${{ steps.publish.outputs.markdown }}
+  error-code:
+    description: Supplied code, or 3 if publication failed
+    value: ${{ steps.publish.outputs.error-code }}
+runs:
+  using: composite
+  steps:
+    - id: publish
+      shell: python
+      env:
+        ACTION_ROOT: ${{ github.action_path }}/..
+        GH_TOKEN: ${{ inputs.token }}
+        REPOSITORY: ${{ inputs.repository }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        MARKDOWN_FILE: ${{ inputs.markdown-file }}
+        REPORT_ERROR_CODE: ${{ inputs.error-code }}
+        CONTEXT_FILE: ${{ inputs.context-file }}
+        SESSION: ${{ inputs.session }}
+        COMMENT_AUTHOR: ${{ inputs.comment-author }}
+        POST_COMMENT: 'true'
+      run: |
+        import os
+        import sys
+        sys.path.insert(0, os.path.join(os.environ['ACTION_ROOT'], 'src'))
+        from estate_actions.cli import run
+        sys.exit(run('sticky'))
