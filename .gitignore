@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+temp/
+.temp/
+.worktrees/
+TODO.md
+todo.md
+

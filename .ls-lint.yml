@@ -1,0 +1,18 @@
+ls:
+  .dir: regex:([a-z0-9._-]+|__pycache__)
+  .py: snake_case
+  .md: SCREAMING_SNAKE_CASE | kebab-case
+  .yml: kebab-case
+  .toml: kebab-case
+  .csv: snake_case
+  .feature: snake_case
+  .sh: exists:0
+  .ps1: exists:0
+ignore:
+  - .git
+  - .venv
+  - .pytest_cache
+  - .ruff_cache
+  - .mypy_cache
+  - .hypothesis
+  - temp
