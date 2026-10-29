@@ -17,6 +17,12 @@ def safe(value: str) -> str:
     return html.escape(value).replace("@", "@\u200b").replace("`", "&#96;")
 
 
+def units(value: int) -> str:
+    """Render integer hundredths exactly, without floating-point/significant-digit rounding."""
+    whole, fraction = divmod(value, 100)
+    return f"{whole}.{fraction:02d}".rstrip("0").rstrip(".") if fraction else str(whole)
+
+
 @dataclass(frozen=True)
 class Report:
     markdown: str
@@ -40,9 +46,9 @@ def render(packet: dict[str, object], metrics: Metrics, judgment: Judgment | Non
         "",
         "| Dimension | Raw included count | Weighted count | Size band |",
         "| --- | ---: | ---: | --- |",
-        f"| Changed lines | {metrics.lines} | {metrics.weighted_lines / 100:g} | {metrics.line_size} |",
-        f"| Changed files | {metrics.files} | {metrics.weighted_files / 100:g} | {metrics.file_size} |",
-        f"| Changed characters | {metrics.characters} | {metrics.weighted_characters / 100:g} "
+        f"| Changed lines | {metrics.lines} | {units(metrics.weighted_lines)} | {metrics.line_size} |",
+        f"| Changed files | {metrics.files} | {units(metrics.weighted_files)} | {metrics.file_size} |",
+        f"| Changed characters | {metrics.characters} | {units(metrics.weighted_characters)} "
         f"| {metrics.character_size} |",
         "",
         f"Total before exclusions: {metrics.total_lines} changed lines across {metrics.total_files} files.",
