@@ -105,3 +105,11 @@ def test_duplicate_sessions_are_reported_not_silently_chosen(monkeypatch):
     )
     with pytest.raises(Invalid, match="Duplicate"):
         publish(GitHub("secret", "a/b"), 1, body, "github-actions[bot]")
+
+
+def test_weighted_counts_remain_exact_above_six_significant_digits():
+    from estate_actions.report import units
+
+    assert units(3796125) == "37961.25"
+    assert units(100000000075) == "1000000000.75"
+    assert units(0) == "0"
