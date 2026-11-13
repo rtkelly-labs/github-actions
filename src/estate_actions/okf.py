@@ -247,19 +247,34 @@ def validate_note(
     return violations
 
 
+def find_repo_root(start_dir: Path) -> Path:
+    """Finds the root directory containing .git."""
+    current = start_dir.resolve()
+    while current != current.parent:
+        if (current / ".git").exists():
+            return current
+        current = current.parent
+    return start_dir
+
+
 def get_git_diff_files(base_ref: str, vault_dir: Path) -> tuple[set[Path], set[Path]]:
     """Returns (all_changed_files, newly_added_files) relative to base_ref."""
+    repo_root = find_repo_root(vault_dir)
     vault_str = str(vault_dir)
 
     # All added/modified markdown files
     cmd_all = ["git", "diff", "--name-only", "--diff-filter=d", base_ref, "--", vault_str]
-    res_all = subprocess.run(cmd_all, capture_output=True, text=True, check=False)
-    all_files = {Path(p.strip()) for p in res_all.stdout.splitlines() if p.strip().endswith(".md")}
+    res_all = subprocess.run(cmd_all, capture_output=True, text=True, check=False, cwd=repo_root)
+    all_files = {
+        (repo_root / p.strip()).resolve() for p in res_all.stdout.splitlines() if p.strip().endswith(".md")
+    }
 
     # Only newly added files
     cmd_new = ["git", "diff", "--name-only", "--diff-filter=A", base_ref, "--", vault_str]
-    res_new = subprocess.run(cmd_new, capture_output=True, text=True, check=False)
-    new_files = {Path(p.strip()) for p in res_new.stdout.splitlines() if p.strip().endswith(".md")}
+    res_new = subprocess.run(cmd_new, capture_output=True, text=True, check=False, cwd=repo_root)
+    new_files = {
+        (repo_root / p.strip()).resolve() for p in res_new.stdout.splitlines() if p.strip().endswith(".md")
+    }
 
     return all_files, new_files
 
