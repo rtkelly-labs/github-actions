@@ -31,6 +31,11 @@ def policy_from_environment() -> Policy:
 
 
 def run(mode: str) -> int:
+    if mode == "okf-lint":
+        from estate_actions.okf import run_okf_lint
+
+        return run_okf_lint()
+
     directory = Path(os.environ.get("REPORT_DIRECTORY") or os.environ.get("RUNNER_TEMP") or "temp")
     directory = directory / "estate-actions"
     directory.mkdir(parents=True, exist_ok=True)
@@ -127,7 +132,7 @@ def run(mode: str) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=("prepare", "assess", "sticky"))
+    parser.add_argument("mode", choices=("prepare", "assess", "sticky", "okf-lint"))
     return run(parser.parse_args().mode)
 
 
