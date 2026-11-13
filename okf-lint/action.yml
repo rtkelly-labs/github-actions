@@ -1,0 +1,38 @@
+name: OKF frontmatter linter
+description: Pure Python diff-scoped Open Knowledge Format (OKF v0.2) frontmatter validator for agent-authored notes
+inputs:
+  vault-path:
+    description: Path to the Vault directory
+    default: 'Vault'
+  base-ref:
+    description: Git ref or branch to diff against (e.g. origin/main); leave blank to check all files in vault-path
+    default: 'origin/main'
+  require-provenance:
+    description: Whether newly created notes require generated.by attribution
+    default: 'true'
+outputs:
+  violations-count:
+    description: Total number of OKF violations found
+    value: ${{ steps.lint.outputs.violations-count }}
+  checked-count:
+    description: Total number of files checked
+    value: ${{ steps.lint.outputs.checked-count }}
+  passed:
+    description: Whether all checked notes conform to OKF
+    value: ${{ steps.lint.outputs.passed }}
+runs:
+  using: composite
+  steps:
+    - id: lint
+      shell: python
+      env:
+        ACTION_ROOT: ${{ github.action_path }}/..
+        VAULT_PATH: ${{ inputs.vault-path }}
+        BASE_REF: ${{ inputs.base-ref }}
+        REQUIRE_PROVENANCE: ${{ inputs.require-provenance }}
+      run: |
+        import os
+        import sys
+        sys.path.insert(0, os.path.join(os.environ['ACTION_ROOT'], 'src'))
+        from estate_actions.cli import run
+        sys.exit(run('okf-lint'))
