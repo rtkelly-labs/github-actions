@@ -322,7 +322,9 @@ dotnet build tests/estate-actions-tests/EstateActions.Tests.csproj -m:2
 dotnet test --project tests/estate-actions-tests/EstateActions.Tests.csproj --no-build
 ```
 
-The test runner is Microsoft.Testing.Platform (xunit v3), so build first and pass `--no-build`
+The code targets .NET 10 as its baseline and .NET 11, and the build needs the .NET 11 SDK. The shipped
+binaries are the .NET 11 build, compiled with runtime async (`runtime-async=on`), and the tests
+run on both. The test runner is Microsoft.Testing.Platform (xunit v3), so build first and pass `--no-build`
 to `dotnet test`. CI runs the Native AOT publish for every platform, with trimming and AOT
 warnings as errors, then smoke-tests each binary through the composite actions. Set
 `ESTATE_ACTIONS_IT_REPO` (a scratch `owner/name` you can write) and `GITHUB_TOKEN` to run the

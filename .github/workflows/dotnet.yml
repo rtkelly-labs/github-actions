@@ -22,7 +22,9 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
-          dotnet-version: 10.0.404
+          dotnet-version: |
+            10.0.404
+            11.0.100
       - name: Restore
         working-directory: dotnet
         run: dotnet restore tests/estate-actions-tests/EstateActions.Tests.csproj --locked-mode

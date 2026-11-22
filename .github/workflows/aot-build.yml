@@ -28,7 +28,9 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
-          dotnet-version: 10.0.404
+          dotnet-version: |
+            10.0.404
+            11.0.100
       - name: Publish Native AOT binary
         shell: bash
         env:
@@ -39,7 +41,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "::error::bad version $VERSION"; exit 1; }
-          dotnet publish dotnet/src/estate-actions/EstateActions.csproj -c Release -r "$RID" -o publish -p:Version="$VERSION"
+          dotnet publish dotnet/src/estate-actions/EstateActions.csproj -c Release -f net11.0 -r "$RID" -o publish -p:Version="$VERSION"
           ext=""; [ "$RID" = win-x64 ] && ext=.exe
           mkdir -p out
           cp "publish/estate-actions$ext" "out/estate-actions-$RID$ext"

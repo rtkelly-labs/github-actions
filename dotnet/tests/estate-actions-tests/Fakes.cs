@@ -328,5 +328,5 @@ internal static class Run
             },
             TestContext.Current.CancellationToken);
 
-    public static JsonElement Body(RecordedRequest request) => JsonDocument.Parse(request.Body!).RootElement;
+    public static JsonElement Body(RecordedRequest request) => JsonElement.Parse(request.Body!);
 }
