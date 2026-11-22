@@ -9,7 +9,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, windows-2025]
+        os: [macos-15]
         rep: [1, 2, 3]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -23,24 +23,25 @@ jobs:
       - name: Runtimes on the image
         run: |
           echo "RUNTIMES=$( (dotnet --list-runtimes 2>/dev/null || true) | awk '/NETCore.App/ {print $2}' | tr '\n' ' ')" >> "$GITHUB_ENV"
-          echo "S0=$(date +%s%3N)" >> "$GITHUB_ENV"
-      - run: echo "T0=$(date +%s%3N)" >> "$GITHUB_ENV"
+          echo "S0=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000')" >> "$GITHUB_ENV"
+      - run: echo "T0=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000')" >> "$GITHUB_ENV"
       - id: first
         continue-on-error: true
         uses: rtkelly-labs/github-actions/release-finalize@1fd41a2010e17817c943861b7236172b6e8fe7f6
         with:
           tag: Bench/v0.0.0
-      - run: echo "T1=$(date +%s%3N)" >> "$GITHUB_ENV"
+      - run: echo "T1=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000')" >> "$GITHUB_ENV"
       - id: second
         continue-on-error: true
         uses: rtkelly-labs/github-actions/release-finalize@1fd41a2010e17817c943861b7236172b6e8fe7f6
         with:
           tag: Bench/v0.0.0
-      - run: echo "T2=$(date +%s%3N)" >> "$GITHUB_ENV"
+      - run: echo "T2=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000')" >> "$GITHUB_ENV"
       - name: Report
         env:
           FIRST: ${{ steps.first.outcome }}
           SECOND: ${{ steps.second.outcome }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set +e -u
           dir="$(dirname "$RUNNER_WORKSPACE")/_actions/rtkelly-labs/github-actions/$DIST_SHA"
@@ -53,7 +54,7 @@ jobs:
           esac
           # Process start to exit, no network: an unknown command prints usage and exits 2.
           starts=""
-          for i in 1 2 3 4 5; do a=$(date +%s%3N); "${cmd[@]}" nope >/dev/null 2>&1; b=$(date +%s%3N); starts="$starts$((b - a)),"; done
+          for i in 1 2 3 4 5; do a=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000'); "${cmd[@]}" nope >/dev/null 2>&1; b=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000'); starts="$starts$((b - a)),"; done
           read -r tar_bytes tar_s < <(curl -sSL -o /dev/null -w '%{size_download} %{time_total}\n' "https://codeload.github.com/rtkelly-labs/github-actions/tar.gz/$DIST_SHA")
           line="RESULT variant=$VARIANT os=$ImageOS arch=$RUNNER_ARCH first_ms=$((T1 - T0)) first=$FIRST second_ms=$((T2 - T1)) second=$SECOND setup_dotnet_ms=$((T0 - S0)) startup_ms=${starts%,} tarball_bytes=$tar_bytes tarball_s=$tar_s runtimes=[${RUNTIMES% }]"
           echo "$line"
@@ -63,7 +64,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, windows-2025]
+        os: [macos-15]
         rep: [1, 2, 3]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -77,24 +78,25 @@ jobs:
       - name: Runtimes on the image
         run: |
           echo "RUNTIMES=$( (dotnet --list-runtimes 2>/dev/null || true) | awk '/NETCore.App/ {print $2}' | tr '\n' ' ')" >> "$GITHUB_ENV"
-          echo "S0=$(date +%s%3N)" >> "$GITHUB_ENV"
-      - run: echo "T0=$(date +%s%3N)" >> "$GITHUB_ENV"
+          echo "S0=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000')" >> "$GITHUB_ENV"
+      - run: echo "T0=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000')" >> "$GITHUB_ENV"
       - id: first
         continue-on-error: true
         uses: rtkelly-labs/github-actions/release-finalize@dd1935e4c1956822f6f0cc1bb31c1e66e0cda878
         with:
           tag: Bench/v0.0.0
-      - run: echo "T1=$(date +%s%3N)" >> "$GITHUB_ENV"
+      - run: echo "T1=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000')" >> "$GITHUB_ENV"
       - id: second
         continue-on-error: true
         uses: rtkelly-labs/github-actions/release-finalize@dd1935e4c1956822f6f0cc1bb31c1e66e0cda878
         with:
           tag: Bench/v0.0.0
-      - run: echo "T2=$(date +%s%3N)" >> "$GITHUB_ENV"
+      - run: echo "T2=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000')" >> "$GITHUB_ENV"
       - name: Report
         env:
           FIRST: ${{ steps.first.outcome }}
           SECOND: ${{ steps.second.outcome }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set +e -u
           dir="$(dirname "$RUNNER_WORKSPACE")/_actions/rtkelly-labs/github-actions/$DIST_SHA"
@@ -107,7 +109,7 @@ jobs:
           esac
           # Process start to exit, no network: an unknown command prints usage and exits 2.
           starts=""
-          for i in 1 2 3 4 5; do a=$(date +%s%3N); "${cmd[@]}" nope >/dev/null 2>&1; b=$(date +%s%3N); starts="$starts$((b - a)),"; done
+          for i in 1 2 3 4 5; do a=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000'); "${cmd[@]}" nope >/dev/null 2>&1; b=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000'); starts="$starts$((b - a)),"; done
           read -r tar_bytes tar_s < <(curl -sSL -o /dev/null -w '%{size_download} %{time_total}\n' "https://codeload.github.com/rtkelly-labs/github-actions/tar.gz/$DIST_SHA")
           line="RESULT variant=$VARIANT os=$ImageOS arch=$RUNNER_ARCH first_ms=$((T1 - T0)) first=$FIRST second_ms=$((T2 - T1)) second=$SECOND setup_dotnet_ms=$((T0 - S0)) startup_ms=${starts%,} tarball_bytes=$tar_bytes tarball_s=$tar_s runtimes=[${RUNTIMES% }]"
           echo "$line"
@@ -117,7 +119,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, windows-2025]
+        os: [macos-15]
         rep: [1, 2, 3]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
@@ -131,27 +133,28 @@ jobs:
       - name: Runtimes on the image
         run: |
           echo "RUNTIMES=$( (dotnet --list-runtimes 2>/dev/null || true) | awk '/NETCore.App/ {print $2}' | tr '\n' ' ')" >> "$GITHUB_ENV"
-          echo "S0=$(date +%s%3N)" >> "$GITHUB_ENV"
+          echo "S0=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000')" >> "$GITHUB_ENV"
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           dotnet-version: 11.0.100
-      - run: echo "T0=$(date +%s%3N)" >> "$GITHUB_ENV"
+      - run: echo "T0=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000')" >> "$GITHUB_ENV"
       - id: first
         continue-on-error: true
         uses: rtkelly-labs/github-actions/release-finalize@dd1935e4c1956822f6f0cc1bb31c1e66e0cda878
         with:
           tag: Bench/v0.0.0
-      - run: echo "T1=$(date +%s%3N)" >> "$GITHUB_ENV"
+      - run: echo "T1=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000')" >> "$GITHUB_ENV"
       - id: second
         continue-on-error: true
         uses: rtkelly-labs/github-actions/release-finalize@dd1935e4c1956822f6f0cc1bb31c1e66e0cda878
         with:
           tag: Bench/v0.0.0
-      - run: echo "T2=$(date +%s%3N)" >> "$GITHUB_ENV"
+      - run: echo "T2=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000')" >> "$GITHUB_ENV"
       - name: Report
         env:
           FIRST: ${{ steps.first.outcome }}
           SECOND: ${{ steps.second.outcome }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set +e -u
           dir="$(dirname "$RUNNER_WORKSPACE")/_actions/rtkelly-labs/github-actions/$DIST_SHA"
@@ -164,7 +167,7 @@ jobs:
           esac
           # Process start to exit, no network: an unknown command prints usage and exits 2.
           starts=""
-          for i in 1 2 3 4 5; do a=$(date +%s%3N); "${cmd[@]}" nope >/dev/null 2>&1; b=$(date +%s%3N); starts="$starts$((b - a)),"; done
+          for i in 1 2 3 4 5; do a=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000'); "${cmd[@]}" nope >/dev/null 2>&1; b=$(perl -MTime::HiRes=time -e 'printf q(%d), time*1000'); starts="$starts$((b - a)),"; done
           read -r tar_bytes tar_s < <(curl -sSL -o /dev/null -w '%{size_download} %{time_total}\n' "https://codeload.github.com/rtkelly-labs/github-actions/tar.gz/$DIST_SHA")
           line="RESULT variant=$VARIANT os=$ImageOS arch=$RUNNER_ARCH first_ms=$((T1 - T0)) first=$FIRST second_ms=$((T2 - T1)) second=$SECOND setup_dotnet_ms=$((T0 - S0)) startup_ms=${starts%,} tarball_bytes=$tar_bytes tarball_s=$tar_s runtimes=[${RUNTIMES% }]"
           echo "$line"
