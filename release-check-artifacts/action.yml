@@ -1,0 +1,35 @@
+name: Release check artifacts
+description: Check that built packages are exactly the planned ones and record the release commit
+inputs:
+  plan:
+    description: JSON release plan (list of entries with key, package_id and version)
+    required: true
+  sha:
+    description: Full commit every package must record as its repository commit
+    required: true
+  artifacts:
+    description: Directory holding <key>/<id>.<version>.nupkg and .snupkg
+    default: artifacts
+runs:
+  using: composite
+  steps:
+    # Runs estate-actions from bin/ at this commit; inputs reach it only through env.
+    - id: run
+      shell: bash
+      env:
+        ESTATE_ACTIONS_PATH: ${{ github.action_path }}
+        ESTATE_ACTIONS_COMMAND: release-check-artifacts
+        RELEASE_PLAN: ${{ inputs.plan }}
+        RELEASE_SHA: ${{ inputs.sha }}
+        RELEASE_ARTIFACTS: ${{ inputs.artifacts }}
+      run: |
+        set -euo pipefail
+        case "$RUNNER_OS/$RUNNER_ARCH" in
+          Linux/X64) bin=estate-actions-linux-x64 ;;
+          Linux/ARM64) bin=estate-actions-linux-arm64 ;;
+          macOS/ARM64) bin=estate-actions-osx-arm64 ;;
+          Windows/X64) bin=estate-actions-win-x64.exe ;;
+          *) echo "::error::estate-actions has no binary for $RUNNER_OS/$RUNNER_ARCH."; exit 1 ;;
+        esac
+        # The pinned commit fixes these bytes: nothing is downloaded or hashed at run time.
+        exec "$ESTATE_ACTIONS_PATH/../bin/$bin" "$ESTATE_ACTIONS_COMMAND"

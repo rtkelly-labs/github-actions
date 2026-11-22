@@ -1,0 +1,43 @@
+name: Release finalize
+description: Publish a release draft once its package is public on nuget.org from the draft commit, creating the tag there
+inputs:
+  token:
+    description: Token that can read and write releases (contents write; drafts are listed only with push access)
+    default: ${{ github.token }}
+  repository:
+    description: Target owner/repository
+    default: ${{ github.repository }}
+  tag:
+    description: Release tag, <package>/v<version>
+    required: true
+  discard:
+    description: Delete the draft instead, refused if the version is already public
+    default: 'false'
+outputs:
+  outcome:
+    description: published, already-published, not-public or discarded
+    value: ${{ steps.run.outputs.outcome }}
+runs:
+  using: composite
+  steps:
+    # Runs estate-actions from bin/ at this commit; inputs reach it only through env.
+    - id: run
+      shell: bash
+      env:
+        ESTATE_ACTIONS_PATH: ${{ github.action_path }}
+        ESTATE_ACTIONS_COMMAND: release-finalize
+        GITHUB_TOKEN: ${{ inputs.token }}
+        RELEASE_REPOSITORY: ${{ inputs.repository }}
+        RELEASE_TAG: ${{ inputs.tag }}
+        RELEASE_DISCARD: ${{ inputs.discard }}
+      run: |
+        set -euo pipefail
+        case "$RUNNER_OS/$RUNNER_ARCH" in
+          Linux/X64) bin=estate-actions-linux-x64 ;;
+          Linux/ARM64) bin=estate-actions-linux-arm64 ;;
+          macOS/ARM64) bin=estate-actions-osx-arm64 ;;
+          Windows/X64) bin=estate-actions-win-x64.exe ;;
+          *) echo "::error::estate-actions has no binary for $RUNNER_OS/$RUNNER_ARCH."; exit 1 ;;
+        esac
+        # The pinned commit fixes these bytes: nothing is downloaded or hashed at run time.
+        exec "$ESTATE_ACTIONS_PATH/../bin/$bin" "$ESTATE_ACTIONS_COMMAND"
