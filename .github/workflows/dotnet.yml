@@ -64,7 +64,7 @@ jobs:
           ASSET: ${{ matrix.asset }}
         run: |
           set -euo pipefail
-          sum=$( (sha256sum "temp/bin/$ASSET" 2>/dev/null || shasum -a 256 "temp/bin/$ASSET") | cut -d ' ' -f 1)
+          sum=$( (sha256sum 2>/dev/null || shasum -a 256) < "temp/bin/$ASSET" | cut -d ' ' -f 1)
           printf '# repository: %s\n# release: none\n# source: %s\n%s  %s\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$sum" "$ASSET" > dist/checksums.txt
           mkdir -p "$RUNNER_TOOL_CACHE/estate-actions/$sum"
           cp "temp/bin/$ASSET" "$RUNNER_TOOL_CACHE/estate-actions/$sum/$ASSET"

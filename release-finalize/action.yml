@@ -47,7 +47,8 @@ runs:
         release=$(sed -n 's/^# release: //p' "$sums" | tr -d '\r')
         expected=$(awk -v a="$asset" '$2 == a || $2 == "*" a { print $1 }' "$sums")
         [[ "$expected" =~ ^[0-9a-f]{64}$ ]] || fail "dist/checksums.txt has no $asset at this ref; pin a commit that carries released binaries."
-        sha256() { if command -v sha256sum >/dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d ' ' -f 1; }
+        # Hash stdin: sha256sum escapes its output when a path holds a backslash (Windows tool cache).
+        sha256() { if command -v sha256sum >/dev/null; then sha256sum; else shasum -a 256; fi < "$1" | cut -d ' ' -f 1; }
         dir="$RUNNER_TOOL_CACHE/estate-actions/$expected"
         bin="$dir/$asset"
         if [ ! -f "$bin" ] || [ "$(sha256 "$bin")" != "$expected" ]; then
