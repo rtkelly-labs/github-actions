@@ -1,0 +1,4 @@
+rules:
+  # Local actions stay on './'; the newer self-repository syntax isn't yet validated by this repo's actionlint pin.
+  self-repository:
+    disable: true

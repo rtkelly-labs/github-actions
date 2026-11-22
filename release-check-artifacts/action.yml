@@ -1,0 +1,58 @@
+name: Release check artifacts
+description: Check that built packages are exactly the planned ones and record the release commit
+inputs:
+  plan:
+    description: JSON release plan (list of entries with key, package_id and version)
+    required: true
+  sha:
+    description: Full commit every package must record as its repository commit
+    required: true
+  artifacts:
+    description: Directory holding <key>/<id>.<version>.nupkg and .snupkg
+    default: artifacts
+runs:
+  using: composite
+  steps:
+    # Runs a prebuilt Native AOT binary (see README "Release actions"); inputs reach it only through env.
+    - id: run
+      shell: bash
+      env:
+        ESTATE_ACTIONS_PATH: ${{ github.action_path }}
+        ESTATE_ACTIONS_COMMAND: release-check-artifacts
+        RELEASE_PLAN: ${{ inputs.plan }}
+        RELEASE_SHA: ${{ inputs.sha }}
+        RELEASE_ARTIFACTS: ${{ inputs.artifacts }}
+      run: |
+        set -euo pipefail
+        fail() { echo "::error::$1"; exit 1; }
+        case "$RUNNER_OS/$RUNNER_ARCH" in
+          Linux/X64) asset=estate-actions-linux-x64 ;;
+          Linux/ARM64) asset=estate-actions-linux-arm64 ;;
+          macOS/ARM64) asset=estate-actions-osx-arm64 ;;
+          Windows/X64) asset=estate-actions-win-x64.exe ;;
+          *) fail "estate-actions has no binary for $RUNNER_OS/$RUNNER_ARCH." ;;
+        esac
+        # The checksums come from this action's own ref, never from the download.
+        sums="$ESTATE_ACTIONS_PATH/../dist/checksums.txt"
+        [ -f "$sums" ] || fail "dist/checksums.txt is missing at this ref."
+        repository=$(sed -n 's/^# repository: //p' "$sums" | tr -d '\r')
+        release=$(sed -n 's/^# release: //p' "$sums" | tr -d '\r')
+        expected=$(awk -v a="$asset" '$2 == a || $2 == "*" a { print $1 }' "$sums")
+        [[ "$expected" =~ ^[0-9a-f]{64}$ ]] || fail "dist/checksums.txt has no $asset at this ref; pin a commit that carries released binaries."
+        # Hash stdin: sha256sum escapes its output when a path holds a backslash (Windows tool cache).
+        sha256() { if command -v sha256sum >/dev/null; then sha256sum; else shasum -a 256; fi < "$1" | cut -d ' ' -f 1; }
+        dir="$RUNNER_TOOL_CACHE/estate-actions/$expected"
+        bin="$dir/$asset"
+        if [ ! -f "$bin" ] || [ "$(sha256 "$bin")" != "$expected" ]; then
+          [[ "$repository" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || fail "dist/checksums.txt names no repository."
+          [[ "$release" =~ ^[A-Za-z0-9_.-]+$ ]] || fail "dist/checksums.txt names no release."
+          tmp=$(mktemp -d "${RUNNER_TEMP:-/tmp}/estate-actions.XXXXXX")
+          curl -fsSL --proto '=https' --retry 3 -o "$tmp/$asset" \
+            "https://github.com/$repository/releases/download/$release/$asset"
+          [ "$(sha256 "$tmp/$asset")" = "$expected" ] || fail "$asset from $release doesn't match dist/checksums.txt."
+          chmod +x "$tmp/$asset"
+          mkdir -p "$dir"
+          mv -f "$tmp/$asset" "$bin"
+          rm -rf "$tmp"
+        fi
+        exec "$bin" "$ESTATE_ACTIONS_COMMAND"

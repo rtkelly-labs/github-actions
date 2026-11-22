@@ -1,0 +1,85 @@
+name: Release binaries
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Binary version, e.g. 0.1.0
+        type: string
+        required: true
+permissions: {}
+concurrency:
+  group: release-binaries
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/aot-build.yml
+    with:
+      version: ${{ inputs.version }}
+
+  # Commit A (this run's main) is what the binaries are built from; the pin PR it opens becomes commit B,
+  # the commit callers pin, carrying A's checksums. See README "Release actions".
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: estate-actions-*
+          merge-multiple: true
+          path: temp/release
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: temp/release/estate-actions-*
+      - name: Write checksums
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "::error::bad version"; exit 1; }
+          release="estate-actions-v$VERSION"
+          {
+            echo "# estate-actions binaries for this ref; the release actions refuse to run without a matching line."
+            echo "# repository: $GITHUB_REPOSITORY"
+            echo "# release: $release"
+            echo "# source: $GITHUB_SHA"
+            (cd temp/release && sha256sum estate-actions-* | sort -k 2)
+          } > temp/checksums.txt
+          cat temp/checksums.txt
+          echo "RELEASE=$release" >> "$GITHUB_ENV"
+      - name: Publish the release at the source commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$RELEASE" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "$RELEASE" --notes "Native AOT binaries for the release actions, built from $GITHUB_SHA." \
+            --latest=false temp/release/estate-actions-* temp/checksums.txt
+      - name: Open the pin PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          branch="pin/$RELEASE"
+          cp temp/checksums.txt dist/checksums.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git switch -c "$branch"
+          git add dist/checksums.txt
+          git commit -m "chore: pin release actions to $RELEASE"
+          gh auth setup-git
+          git push origin "$branch"
+          gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
+            --title "chore: pin release actions to $RELEASE" \
+            --body "Points dist/checksums.txt at $RELEASE, built from $GITHUB_SHA. A PR opened by GITHUB_TOKEN doesn't start CI: close and reopen it (or push an empty commit) to run checks."

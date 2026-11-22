@@ -1,0 +1,203 @@
+name: .NET
+on:
+  pull_request:
+  push:
+    branches: [main]
+  merge_group:
+permissions:
+  contents: read
+concurrency:
+  group: dotnet-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: |
+            10.0.404
+            11.0.100
+      - name: Restore
+        working-directory: dotnet
+        run: dotnet restore tests/estate-actions-tests/EstateActions.Tests.csproj --locked-mode
+      - name: Build
+        working-directory: dotnet
+        run: dotnet build tests/estate-actions-tests/EstateActions.Tests.csproj --no-restore -c Release
+      - name: Test
+        working-directory: dotnet
+        run: dotnet test --project tests/estate-actions-tests/EstateActions.Tests.csproj --no-build -c Release
+
+  aot:
+    uses: ./.github/workflows/aot-build.yml
+
+  smoke:
+    name: smoke (${{ matrix.rid }})
+    needs: aot
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { rid: linux-x64, os: ubuntu-latest, asset: estate-actions-linux-x64 }
+          - { rid: linux-arm64, os: ubuntu-24.04-arm, asset: estate-actions-linux-arm64 }
+          - { rid: osx-arm64, os: macos-latest, asset: estate-actions-osx-arm64 }
+          - { rid: win-x64, os: windows-latest, asset: estate-actions-win-x64.exe }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: estate-actions-${{ matrix.rid }}
+          path: temp/bin
+      # Stand in for a release: record the built binary's hash at this ref and put it where a warm run finds it.
+      - name: Seed checksums and tool cache
+        shell: bash
+        env:
+          ASSET: ${{ matrix.asset }}
+        run: |
+          set -euo pipefail
+          sum=$( (sha256sum 2>/dev/null || shasum -a 256) < "temp/bin/$ASSET" | cut -d ' ' -f 1)
+          printf '# repository: %s\n# release: none\n# source: %s\n%s  %s\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$sum" "$ASSET" > dist/checksums.txt
+          mkdir -p "$RUNNER_TOOL_CACHE/estate-actions/$sum"
+          cp "temp/bin/$ASSET" "$RUNNER_TOOL_CACHE/estate-actions/$sum/$ASSET"
+          chmod +x "$RUNNER_TOOL_CACHE/estate-actions/$sum/$ASSET"
+      - name: Build a package that records this commit
+        shell: python
+        run: |
+          import os, zipfile
+          sha = os.environ['GITHUB_SHA']
+          os.makedirs('temp/artifacts/Demo', exist_ok=True)
+          nuspec = ('<?xml version="1.0"?><package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">'
+                    '<metadata><id>Demo.Pkg</id><version>1.2.0</version>'
+                    f'<repository type="git" url="https://example.invalid/demo" commit="{sha}" /></metadata></package>')
+          for ext in ('nupkg', 'snupkg'):
+              with zipfile.ZipFile(f'temp/artifacts/Demo/Demo.Pkg.1.2.0.{ext}', 'w') as z:
+                  z.writestr('Demo.Pkg.nuspec', nuspec)
+      - uses: ./release-check-artifacts
+        with:
+          artifacts: temp/artifacts
+          sha: ${{ github.sha }}
+          plan: '[{"key":"Demo","package_id":"Demo.Pkg","version":"1.2.0"}]'
+      - id: wrong-commit
+        continue-on-error: true
+        uses: ./release-check-artifacts
+        with:
+          artifacts: temp/artifacts
+          sha: '0000000000000000000000000000000000000000'
+          plan: '[{"key":"Demo","package_id":"Demo.Pkg","version":"1.2.0"}]'
+      - id: malformed-tag
+        continue-on-error: true
+        uses: ./release-finalize
+        with:
+          tag: not-a-release-tag
+      - name: Expect the refusals
+        shell: bash
+        env:
+          WRONG_COMMIT: ${{ steps.wrong-commit.outcome }}
+          MALFORMED_TAG: ${{ steps.malformed-tag.outcome }}
+        run: |
+          [ "$WRONG_COMMIT" = failure ] && [ "$MALFORMED_TAG" = failure ]
+
+  benchmark:
+    name: benchmark (linux-x64)
+    needs: aot
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: estate-actions-linux-x64
+          path: temp/bin
+      - name: Seed checksums and tool cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          sum=$(sha256sum temp/bin/estate-actions-linux-x64 | cut -d ' ' -f 1)
+          printf '# repository: %s\n# release: none\n# source: %s\n%s  %s\n' "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$sum" estate-actions-linux-x64 > dist/checksums.txt
+          mkdir -p "$RUNNER_TOOL_CACHE/estate-actions/$sum"
+          cp temp/bin/estate-actions-linux-x64 "$RUNNER_TOOL_CACHE/estate-actions/$sum/"
+          chmod +x "$RUNNER_TOOL_CACHE/estate-actions/$sum/estate-actions-linux-x64"
+          echo "BENCH_SIZE=$(stat -c %s temp/bin/estate-actions-linux-x64)" >> "$GITHUB_ENV"
+      # Each measured step is bracketed by timestamps, so both sides pay the same per-step runner overhead.
+      # Both list every release of this repository and look for one tag, as the release pre-check does.
+      - run: echo "T0=$(date +%s%3N)" >> "$GITHUB_ENV"
+      - name: Bash (gh api + jq), as the workflows run today
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: Bench/v0.0.0
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/releases?per_page=100" --jq '[.[] | select(.tag_name == env.TAG)]' | jq -s 'add // []' > /dev/null
+      - run: echo "T1=$(date +%s%3N)" >> "$GITHUB_ENV"
+      - id: warm
+        continue-on-error: true
+        uses: ./release-finalize
+        with:
+          tag: Bench/v0.0.0
+      - run: echo "T2=$(date +%s%3N)" >> "$GITHUB_ENV"
+      # No release of the binary exists yet, so the cold path is measured as the same-size download it would make.
+      - name: Cold-path stand-in (download a same-size GitHub release asset and hash it)
+        run: |
+          set -euo pipefail
+          start=$(date +%s%3N)
+          curl -fsSL --proto '=https' -r "0-$((BENCH_SIZE - 1))" -o temp/cold \
+            https://github.com/cli/cli/releases/download/v2.105.0/gh_2.105.0_linux_amd64.tar.gz
+          sha256sum temp/cold > /dev/null
+          echo "COLD_EXTRA=$(( $(date +%s%3N) - start ))" >> "$GITHUB_ENV"
+      - name: Report
+        env:
+          WARM_OUTCOME: ${{ steps.warm.outcome }}
+        run: |
+          {
+            echo "### Release step wall time (ms, linux-x64)"
+            echo "| Step | ms |"
+            echo "| --- | ---: |"
+            echo "| bash: gh api --paginate + jq | $((T1 - T0)) |"
+            echo "| binary, warm tool cache | $((T2 - T1)) |"
+            echo "| binary, cold (warm + measured download of $BENCH_SIZE bytes) | $((T2 - T1 + COLD_EXTRA)) |"
+            echo
+            echo "Binary step outcome: $WARM_OUTCOME (expected failure: no draft for the bench tag)."
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # A commit that changes dist/checksums.txt must carry the same dotnet/ sources the binaries were built from.
+  pinned-source:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check binaries match source
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet "$BASE" HEAD -- dist/checksums.txt; then
+            echo "dist/checksums.txt unchanged."
+            exit 0
+          fi
+          if ! grep -qv '^#' dist/checksums.txt; then
+            echo "dist/checksums.txt pins no binaries."
+            exit 0
+          fi
+          source=$(sed -n 's/^# source: //p' dist/checksums.txt)
+          [[ "$source" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::dist/checksums.txt names no source commit."; exit 1; }
+          git diff --quiet "$source" HEAD -- dotnet/ || {
+            echo "::error::dotnet/ differs from $source, the commit the pinned binaries were built from."
+            git diff --stat "$source" HEAD -- dotnet/
+            exit 1
+          }
