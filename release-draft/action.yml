@@ -44,6 +44,6 @@ runs:
         RELEASE_PRERELEASE: ${{ inputs.prerelease }}
       run: |
         set -euo pipefail
-        command -v dotnet >/dev/null || { echo "::error::estate-actions needs a .NET 8 or later runtime on the runner (actions/setup-dotnet)."; exit 1; }
+        command -v dotnet >/dev/null || { echo "::error::estate-actions needs a .NET 11 or later runtime on the runner (actions/setup-dotnet)."; exit 1; }
         # The pinned commit fixes these bytes: nothing is downloaded or hashed at run time.
         exec dotnet "$ESTATE_ACTIONS_PATH/../bin/estate-actions.dll" "$ESTATE_ACTIONS_COMMAND"
