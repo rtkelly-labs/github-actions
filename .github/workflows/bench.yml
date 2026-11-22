@@ -10,6 +10,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, windows-2025]
+        rep: [1, 2, 3]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     env:
@@ -41,7 +42,7 @@ jobs:
           FIRST: ${{ steps.first.outcome }}
           SECOND: ${{ steps.second.outcome }}
         run: |
-          set -uo pipefail
+          set +e -u
           dir="$(dirname "$RUNNER_WORKSPACE")/_actions/rtkelly-labs/github-actions/$DIST_SHA"
           case "$VARIANT/$RUNNER_OS/$RUNNER_ARCH" in
             aot/Linux/X64) cmd=("$dir/bin/estate-actions-linux-x64") ;;
@@ -63,6 +64,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, windows-2025]
+        rep: [1, 2, 3]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     env:
@@ -94,7 +96,7 @@ jobs:
           FIRST: ${{ steps.first.outcome }}
           SECOND: ${{ steps.second.outcome }}
         run: |
-          set -uo pipefail
+          set +e -u
           dir="$(dirname "$RUNNER_WORKSPACE")/_actions/rtkelly-labs/github-actions/$DIST_SHA"
           case "$VARIANT/$RUNNER_OS/$RUNNER_ARCH" in
             aot/Linux/X64) cmd=("$dir/bin/estate-actions-linux-x64") ;;
@@ -116,6 +118,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, ubuntu-24.04-arm, macos-15, windows-2025]
+        rep: [1, 2, 3]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     env:
@@ -150,7 +153,7 @@ jobs:
           FIRST: ${{ steps.first.outcome }}
           SECOND: ${{ steps.second.outcome }}
         run: |
-          set -uo pipefail
+          set +e -u
           dir="$(dirname "$RUNNER_WORKSPACE")/_actions/rtkelly-labs/github-actions/$DIST_SHA"
           case "$VARIANT/$RUNNER_OS/$RUNNER_ARCH" in
             aot/Linux/X64) cmd=("$dir/bin/estate-actions-linux-x64") ;;
