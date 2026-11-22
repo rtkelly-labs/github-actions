@@ -1,0 +1,49 @@
+name: Release draft
+description: Draft a GitHub release at a commit without creating its tag, backing out if another release for the tag appears
+inputs:
+  token:
+    description: Token that can read and write releases (contents write; drafts are listed only with push access)
+    default: ${{ github.token }}
+  repository:
+    description: Target owner/repository
+    default: ${{ github.repository }}
+  tag:
+    description: Release tag, <package>/v<version>
+    required: true
+  sha:
+    description: Full 40-character commit the release (and later its tag) points at
+    required: true
+  title:
+    description: Release title
+    required: true
+  notes:
+    description: Release notes (Markdown)
+    default: ''
+  prerelease:
+    description: Whether the release is a prerelease
+    default: 'false'
+outputs:
+  release-id:
+    description: Id of the created draft
+    value: ${{ steps.run.outputs.release-id }}
+runs:
+  using: composite
+  steps:
+    # Runs estate-actions from bin/ at this commit; inputs reach it only through env.
+    - id: run
+      shell: bash
+      env:
+        ESTATE_ACTIONS_PATH: ${{ github.action_path }}
+        ESTATE_ACTIONS_COMMAND: release-draft
+        GITHUB_TOKEN: ${{ inputs.token }}
+        RELEASE_REPOSITORY: ${{ inputs.repository }}
+        RELEASE_TAG: ${{ inputs.tag }}
+        RELEASE_SHA: ${{ inputs.sha }}
+        RELEASE_TITLE: ${{ inputs.title }}
+        RELEASE_NOTES: ${{ inputs.notes }}
+        RELEASE_PRERELEASE: ${{ inputs.prerelease }}
+      run: |
+        set -euo pipefail
+        command -v dotnet >/dev/null || { echo "::error::estate-actions needs a .NET 8 or later runtime on the runner (actions/setup-dotnet)."; exit 1; }
+        # The pinned commit fixes these bytes: nothing is downloaded or hashed at run time.
+        exec dotnet "$ESTATE_ACTIONS_PATH/../bin/estate-actions.dll" "$ESTATE_ACTIONS_COMMAND"
