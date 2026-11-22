@@ -330,6 +330,25 @@ warnings as errors, then smoke-tests each binary through the composite actions. 
 `ESTATE_ACTIONS_IT_REPO` (a scratch `owner/name` you can write) and `GITHUB_TOKEN` to run the
 opt-in integration test against real GitHub. It deletes only the releases and tags it creates.
 
+#### Runner images
+
+GitHub lists everything preinstalled on each hosted runner image in
+[actions/runner-images](https://github.com/actions/runner-images), one readme per image:
+
+| Runner label | Software list |
+| --- | --- |
+| `ubuntu-24.04` | [Ubuntu2404-Readme.md](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md) |
+| `ubuntu-24.04-arm` | [Ubuntu2404-Arm64-Readme.md](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Arm64-Readme.md) |
+| `ubuntu-22.04` | [Ubuntu2204-Readme.md](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Readme.md) |
+| `ubuntu-22.04-arm` | [Ubuntu2204-Arm64-Readme.md](https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Arm64-Readme.md) |
+| `macos-15` | [macos-15-arm64-Readme.md](https://github.com/actions/runner-images/blob/main/images/macos/macos-15-arm64-Readme.md) |
+| `windows-2025` | [Windows2025-VS2026-Readme.md](https://github.com/actions/runner-images/blob/main/images/windows/Windows2025-VS2026-Readme.md) |
+| `windows-2022` | [Windows2022-Readme.md](https://github.com/actions/runner-images/blob/main/images/windows/Windows2022-Readme.md) |
+
+Check the ".NET Tools" or ".NET Core Tools" section before relying on a preinstalled SDK or runtime.
+The release actions need nothing from the image: the AOT binaries carry their own runtime. CI still
+pins its SDKs with `actions/setup-dotnet`, so a change to an image can't change a build.
+
 ### Proposal: the Python actions on the same binary
 
 `okf-lint`, `pr-assessment`, `pr-context` and `sticky-comment` could become further subcommands.
