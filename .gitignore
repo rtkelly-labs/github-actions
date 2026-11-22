@@ -10,3 +10,6 @@ temp/
 TODO.md
 todo.md
 
+bin/
+obj/
+*.binlog

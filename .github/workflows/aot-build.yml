@@ -1,0 +1,53 @@
+name: AOT build
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version stamped into the binary
+        type: string
+        default: 0.0.0-ci
+permissions:
+  contents: read
+jobs:
+  build:
+    name: build (${{ matrix.rid }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux builds on the oldest supported image so the binary needs only its glibc.
+          - { rid: linux-x64, os: ubuntu-22.04 }
+          - { rid: linux-arm64, os: ubuntu-22.04-arm }
+          - { rid: osx-arm64, os: macos-15 }
+          - { rid: win-x64, os: windows-2022 }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: 10.0.404
+      - name: Publish Native AOT binary
+        shell: bash
+        env:
+          RID: ${{ matrix.rid }}
+          VERSION: ${{ inputs.version }}
+          DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+          DOTNET_NOLOGO: '1'
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "::error::bad version $VERSION"; exit 1; }
+          dotnet publish dotnet/src/estate-actions/EstateActions.csproj -c Release -r "$RID" -o publish -p:Version="$VERSION"
+          ext=""; [ "$RID" = win-x64 ] && ext=.exe
+          mkdir -p out
+          cp "publish/estate-actions$ext" "out/estate-actions-$RID$ext"
+          ls -l out
+          "out/estate-actions-$RID$ext" --version
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: estate-actions-${{ matrix.rid }}
+          path: out/estate-actions-*
+          if-no-files-found: error
+          retention-days: 7

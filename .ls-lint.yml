@@ -16,3 +16,9 @@ ignore:
   - .mypy_cache
   - .hypothesis
   - temp
+  - dotnet/src/estate-actions/bin
+  - dotnet/src/estate-actions/obj
+  - dotnet/src/estate-actions-core/bin
+  - dotnet/src/estate-actions-core/obj
+  - dotnet/tests/estate-actions-tests/bin
+  - dotnet/tests/estate-actions-tests/obj

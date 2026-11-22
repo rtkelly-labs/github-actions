@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/estate-actions-core/">
+    <Project Path="src/estate-actions-core/EstateActions.Core.csproj" />
+  </Folder>
+  <Folder Name="/src/estate-actions/">
+    <Project Path="src/estate-actions/EstateActions.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
+  <Folder Name="/tests/estate-actions-tests/">
+    <Project Path="tests/estate-actions-tests/EstateActions.Tests.csproj" />
+  </Folder>
+</Solution>
